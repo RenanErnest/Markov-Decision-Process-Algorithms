@@ -321,6 +321,8 @@ def LAOStar(mdp, startState=None):
 
     #Heuristic
     def h(state):
+        # aux = mdp.S
+        # mdp.value_iteration(0.999, 0.000001)
         return 0
 
     #LAOStar
@@ -409,18 +411,153 @@ def LAOStar(mdp, startState=None):
         print()
 
 
+
+def LAOGUBS(mdp, startState=None, processed=None):
+    if not startState:  # wheter nothing was passed as editables, we will consider all states in the mdp
+        startState = mdp.S[0]
+    else:
+        if type(startState) != type(mdp.S[0]):
+            startState = mdp.S[startState - 1]
+
+    # Heuristic
+    def h(state):
+        # aux = mdp.S
+        # mdp.value_iteration(0.999, 0.000001)
+        return 0
+
+    # LAOStar
+    startState.tip = True
+    G = [startState]  # Explicit graph
+    while True:
+
+        '''Expand some nonterminal tip state n of the best partial solution graph'''
+        # BFS
+        expanded = None
+        states = [startState]
+        visited = [False] * len(mdp.S)
+        while states:
+            s = states.pop(0)
+            if s.tip:
+                expanded = s
+                break
+            else:
+                for t in s.T[s.action]:
+                    state = mdp.S[t[0] - 1]
+                    if not visited[state.number - 1]:
+                        states.append(state)
+                        visited[state.number - 1] = True
+
+        # There are no tips
+        if not expanded or expanded in processed:
+            break
+
+        expanded.tip = False
+
+        print("G' antes", G)
+        print('Expandido:', expanded)
+        '''add any new successor states to Gline.'''
+        for a in range(4):
+            for t in expanded.T[a]:
+                state = mdp.S[t[0] - 1]
+                if state not in G:
+                    G.append(state)
+                    state.tip = True
+                    if state.goal:
+                        state.value = 0
+                    else:
+                        state.value = h(state)
+
+        print("G' depois", G)
+
+        mdp.print_actions()
+
+        ''' Create a set Z that contains the expanded state and all of its ancestors in the explicit graph along
+            marked action arcs. '''
+        # DFS with path
+        Z = []
+        for start in G:
+            states = [start]
+            path = []
+            visited = [False] * len(mdp.S)
+            while states:
+                s = states.pop()
+                visited[s.number - 1] = True
+                path.append(s)
+
+                child = False
+
+                if s == expanded:
+                    for state in path:
+                        if state not in Z:
+                            Z.append(state)
+                else:
+                    for t in s.T[s.action]:
+                        state = mdp.S[t[0] - 1]
+                        if not visited[state.number - 1]:
+                            child = True
+                            states.append(state)
+
+                if not child:
+                    path.pop()
+                    visited[s.number - 1] = False
+
+        '''Perform dynamic programming on the states in set Z to update
+            state costs and determine the best action for each state.'''
+        print('Z', Z)
+        print(mdp.value_iteration(0.999, 0.000001, Z))
+
+        print('After update costs:')
+        mdp.print_actions()
+        print()
+
+    '''Extracting the last best solution graph'''
+    bfs = []
+    states = [startState]
+    path = []
+    visited = [False] * len(mdp.S)
+    while states:
+        s = states.pop()
+        visited[s.number - 1] = True
+        path.append(s)
+
+        child = False
+
+        if s.goal:
+            for state in path:
+                if state not in bfs:
+                    bfs.append(state)
+        else:
+            for t in s.T[s.action]:
+                state = mdp.S[t[0] - 1]
+                if not visited[state.number - 1]:
+                    child = True
+                    states.append(state)
+
+        if not child:
+            path.pop()
+            visited[s.number - 1] = False
+    return bfs
+
+
+
+
+
 # Test Script
-mdp = MDP(15,15)
+mdp = MDP(4,4)
 mdp.swim(0.8,0,True)
 print(mdp)
 
 mdp.set_costs(1)
 mdp.set_action(0)
 
-LAOStar(mdp,2)
+# LAOStar(mdp,1)
+processed = []
+processed += LAOGUBS(mdp,12, processed)
+print('\nProcessed: ',processed,'\n\n')
+processed += LAOGUBS(mdp,2, processed)
 
-# print(mdp.value_iteration(0.999,0.000001,[2,3]))
+
+# print(mdp.value_iteration(0.999,0.000001))
+# mdp.print_actions()
 # print(mdp.value_iteration(0.999,0.000001,[1,2,3]))
 # print(mdp.value_iteration(0.999,0.000001,[1,2,3,5]))
-
-input()
