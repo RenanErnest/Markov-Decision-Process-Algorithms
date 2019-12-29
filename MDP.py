@@ -555,7 +555,6 @@ processed = []
 processed += LAOGUBS(mdp,12, processed)
 print('\nProcessed: ',processed,'\n\n')
 processed += LAOGUBS(mdp,2, processed)
-# test
 
 
 # print(mdp.value_iteration(0.999,0.000001))
