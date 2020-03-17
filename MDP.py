@@ -202,6 +202,63 @@ class MDP:
     def policy_iteration(self,gamma: float):
         pass
 
+    def dual_criterion_risk_sensitive(self,risk_factor,minimum_error):
+        # initializations
+        delta1 = float('Inf')
+        delta2 = 0
+        v_lambda = [0] * len(self.S)
+        # probability to reach the goal
+        pg = [0] * len(self.S)
+        for index in range(len(self.S)):
+            if self.S[index].goal:
+                v_lambda[index] = -1 if risk_factor > 0 else 1
+                pg[index] = 1
+
+        # auxiliar function
+        def p_sum(transiction):
+            summ = 0
+            for s_line in transiction:
+                summ += s_line[1] * p_previous[s_line[0]-1]
+            return summ
+
+        while delta1 >= minimum_error or delta2 <= 0:
+            v_previous = v_lambda.copy()
+            p_previous = pg.copy()
+            A = [[] for i in range(len(self.S))]
+            for state_index in range(len(self.S)):
+                pg[state_index] = max(self.S[state_index].T,key=p_sum)
+                # keeping all the actions that tie in the A list
+                for transiction_index in range(len(self.S[state_index].T)):
+                    if p_sum(self.S[state_index].T[transiction_index]) == pg[state_index]:
+                        A[state_index].append(transiction_index)
+
+                v_lambda[state_index] = A[state_index][0]
+                best_action = 0
+                for a in A[state_index]:
+                    summ = 0
+                    for s_line_transaction in range(len(self.S[state_index].T[a])):
+                        summ += s_line_transaction[1]*v_previous[s_line_transaction[0]]
+                    risk_value = math.exp(risk_factor*self.S[state_index].cost) * summ
+                    if risk_value > v_lambda[state_index]:
+                        v_lambda[state_index] = risk_value
+                        best_action = a
+
+                self.S[state_index].action = best_action
+
+            # update deltas
+            for state_index in range(len(self.S)):
+                delta1 = max(delta1,abs(v_lambda[state_index]-v_previous[state_index])+abs(pg[state_index]-p_previous[state_index]))
+
+                all_actions = set([i for i in range(self.A)])
+                max_prob_actions = set(A[state_index])
+                poor_actions = all_actions - max_prob_actions
+                for a in poor_actions:
+                    summ = 0
+                    for s_line_transaction in range(len(self.S[state_index].T[a])):
+                        summ += s_line_transaction[1] * pg[s_line_transaction[0]]
+                    delta2 = min(delta2,pg[state_index]-summ)
+
+
     def swim(self, probCorrenteza, probFall, Bridge):
         T = [[[0 for s2 in range(len(self.S))] for s1 in range(len(self.S))] for a in range(4)]
 
@@ -575,7 +632,8 @@ processed.update(LAOGUBS(mdp,12, processed))
 print('\nProcessed: ',processed,'\n\n')
 processed.update(LAOGUBS(mdp,2, processed))
 print('\nProcessed: ',processed,'\n\n')
-
+print(mdp.S[0].T)
+print(mdp.S[1].T)
 
 # print(mdp.value_iteration(0.999,0.000001))
 # mdp.print_actions()
