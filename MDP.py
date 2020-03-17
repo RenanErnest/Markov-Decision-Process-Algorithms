@@ -217,8 +217,8 @@ class MDP:
         # auxiliar function
         def p_sum(transiction):
             summ = 0
-            for s_line in transiction:
-                summ += s_line[1] * p_previous[s_line[0]-1]
+            for s_prime in transiction:
+                summ += s_prime[1] * p_previous[s_prime[0]-1]
             return summ
 
         while delta1 >= minimum_error or delta2 <= 0:
@@ -236,8 +236,8 @@ class MDP:
                 best_action = 0
                 for a in A[state_index]:
                     summ = 0
-                    for s_line_transaction in range(len(self.S[state_index].T[a])):
-                        summ += s_line_transaction[1]*v_previous[s_line_transaction[0]]
+                    for s_prime_transaction in range(len(self.S[state_index].T[a])):
+                        summ += s_prime_transaction[1]*v_previous[s_prime_transaction[0]]
                     risk_value = math.exp(risk_factor*self.S[state_index].cost) * summ
                     if risk_value > v_lambda[state_index]:
                         v_lambda[state_index] = risk_value
@@ -254,8 +254,8 @@ class MDP:
                 poor_actions = all_actions - max_prob_actions
                 for a in poor_actions:
                     summ = 0
-                    for s_line_transaction in range(len(self.S[state_index].T[a])):
-                        summ += s_line_transaction[1] * pg[s_line_transaction[0]]
+                    for s_prime_transaction in range(len(self.S[state_index].T[a])):
+                        summ += s_prime_transaction[1] * pg[s_prime_transaction[0]]
                     delta2 = min(delta2,pg[state_index]-summ)
 
 
@@ -412,7 +412,7 @@ def LAOStar(mdp, startState=None):
 
         print("G' antes", G)
         print('Expandido:', expanded)
-        '''add any new successor states to Gline.'''
+        '''add any new successor states to Gprime.'''
         for a in range(4):
             for t in expanded.T[a]:
                 state = mdp.S[t[0] - 1]
@@ -518,7 +518,7 @@ def LAOGUBS(mdp, startState=None, processed=None):
 
         print("G' antes", G)
         print('Expandido:', expanded)
-        '''add any new successor states to Gline following every action.'''
+        '''add any new successor states to Gprime following every action.'''
         for a in range(4):
             for t in expanded.T[a]:
                 state = mdp.S[t[0] - 1]
