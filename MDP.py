@@ -1,4 +1,4 @@
-import math
+import problems
 import copy
 # import traceback
 # import numpy as np
@@ -259,114 +259,6 @@ class MDP:
                     delta2 = min(delta2,pg[state_index]-summ)
 
 
-    def swim(self, probCorrenteza, probFall, Bridge):
-        T = [[[0 for s2 in range(len(self.S))] for s1 in range(len(self.S))] for a in range(4)]
-
-        for s in range(self.Nx * self.Ny):  # each state
-            y = s % self.Ny;
-            x = math.floor(s / self.Ny);
-
-            if y == 0:  # goal or waterfall
-                if x == self.Nx - 1:  # goal
-                    for a in range(self.A):
-                        T[a][s][len(
-                            self.S) - 1] = 1;  # for each action it has 1 of probability to go to a absorb state where costs are zero
-                else:
-                    for a in range(self.A):
-                        T[a][s][s] = 1;  # for each action it has 1 of probability to go to itself
-            else:
-                # UP
-                a = 0
-                if x > 0 and x < self.Nx - 1 and (y < self.Ny - 1 or not Bridge):  # rio
-                    x1 = x;
-                    x2 = x;
-                    x3 = x;
-                    y1 = min(y + 1, self.Ny - 1);
-                    y2 = y - 1;
-                    y3 = y;
-
-                    s1 = x1 * self.Ny + y1;  # sobe
-                    s2 = x2 * self.Ny + y2;  # desce
-                    s3 = x3 * self.Ny + y3;  # parado
-
-                    T[a][s][s1] = (1 - probCorrenteza) ** 2;
-                    T[a][s][s2] = T[a][s][s2] + probCorrenteza ** 2;
-                    T[a][s][s3] = T[a][s][s3] + 2 * probCorrenteza * (1 - probCorrenteza);
-                else:  # margem
-                    x1 = x;
-                    y1 = min(y + 1, self.Ny - 1);
-                    s1 = x1 * self.Ny + y1;
-                    x2 = min(x + 1, self.Nx - 1);
-                    y2 = y;
-                    s2 = x2 * self.Ny + y2;
-                    T[a][s][s1] = 1 - probFall;
-                    T[a][s][s2] = T[a][s][s2] + probFall;
-
-                # DOWN
-                a = 1
-                x1 = x;
-                y1 = y - 1;
-                s1 = x1 * self.Ny + y1;
-                T[a][s][s1] = 1;
-
-                # RIGHT
-                a = 2
-                if x > 0 and x < self.Nx - 1 and (y < self.Ny - 1 or not Bridge):  # rio
-                    x1 = min(x + 1, self.Nx - 1);
-                    x2 = x;
-                    x3 = min(x + 1, self.Nx - 1);
-                    x4 = x;
-                    y1 = y;
-                    y2 = y - 1;
-                    y3 = y - 1;
-                    y4 = y;
-                    s1 = x1 * self.Ny + y1;  # east
-                    s2 = x2 * self.Ny + y2;  # south
-                    s3 = x3 * self.Ny + y3;  # southeast
-                    s4 = x4 * self.Ny + y4;  # stopped
-
-                    T[a][s][s1] = (1 - probCorrenteza) ** 2;
-                    T[a][s][s2] = T[a][s][s2] + probCorrenteza ** 2;
-                    T[a][s][s3] = T[a][s][s3] + (1 - probCorrenteza) * probCorrenteza;
-                    T[a][s][s4] = T[a][s][s4] + probCorrenteza * (1 - probCorrenteza);
-                else:
-                    x1 = min(x + 1, self.Nx - 1);
-                    y1 = y;
-                    s1 = x1 * self.Ny + y1;
-                    T[a][s][s1] = 1
-
-                # LEFT
-                a = 3
-                if x > 0 and x < self.Nx - 1 and (y < self.Ny - 1 or not Bridge):  # river
-                    x1 = max(x - 1, 0);
-                    x2 = x;
-                    x3 = max(x - 1, 0);
-                    x4 = x;
-                    y1 = y;
-                    y2 = y - 1;
-                    y3 = y - 1;
-                    y4 = y;
-                    s1 = x1 * self.Ny + y1;  # weast
-                    s2 = x2 * self.Ny + y2;  # south
-                    s3 = x3 * self.Ny + y3;  # southwest
-                    s4 = x4 * self.Ny + y4;  # stopped
-                    T[a][s][s1] = (1 - probCorrenteza) ** 2;
-                    T[a][s][s2] = T[a][s][s2] + probCorrenteza ** 2;
-                    T[a][s][s3] = T[a][s][s3] + (1 - probCorrenteza) * probCorrenteza;
-                    T[a][s][s4] = T[a][s][s4] + probCorrenteza * (1 - probCorrenteza);
-                else:
-                    x1 = max(x - 1, 0);
-                    y1 = y;
-                    s1 = x1 * self.Ny + y1;
-                    T[a][s][s1] = 1;
-
-        for a in range(self.A):
-            for s2 in range(len(self.S)):
-                T[a][(self.Nx - 1) * self.Ny][s2] = 0
-            T[a][(self.Nx - 1) * self.Ny][len(self.S) - 1] = 1
-
-        self.matrix_to_edges(T)
-        return T
 
 
 def LAOStar(mdp, startState=None):
@@ -485,7 +377,7 @@ def LAOGUBS(mdp, startState=None, processed=None):
 
     # LAOStar
     startState.tip = True
-    G = [startState]  # Explicit graph
+    G = set([startState])  # Explicit graph
     while True:
 
         '''
@@ -523,11 +415,11 @@ def LAOGUBS(mdp, startState=None, processed=None):
             for t in expanded.T[a]:
                 state = mdp.S[t[0] - 1]
                 if state not in G:
-                    G.append(state)
+                    G.add(state)
                     state.tip = True
                     if state.goal:
                         state.value = 0
-                    else:
+                    elif state not in processed: # resusing the previous value of the states in the processed set
                         state.value = h(state)
 
         print("G' depois", G)
@@ -620,7 +512,8 @@ def LAOGUBS(mdp, startState=None, processed=None):
 
 # Test Script
 mdp = MDP(4,4)
-mdp.swim(0.8,0,True)
+#problems.swim_without_deadend(mdp.Nx,mdp.Ny,mdp.A,0.8,0,mdp)
+problems.swim(mdp.Nx,mdp.Ny,mdp.A,0.8,0,True,mdp)
 print(mdp)
 
 mdp.set_costs(1)
@@ -628,12 +521,13 @@ mdp.set_action(0)
 
 # LAOStar(mdp,1)
 processed = set()
-processed.update(LAOGUBS(mdp,12, processed))
-print('\nProcessed: ',processed,'\n\n')
-processed.update(LAOGUBS(mdp,2, processed))
-print('\nProcessed: ',processed,'\n\n')
-print(mdp.S[0].T)
-print(mdp.S[1].T)
+# processed.update(LAOGUBS(mdp,12, processed))
+processed.update(LAOGUBS(mdp,14, processed))
+print('bsg: ',processed,'\n\n\n')
+processed.update(LAOGUBS(mdp,15, processed))
+# print('\nProcessed: ',processed,'\n\n')
+#processed.update(LAOGUBS(mdp,2, processed))
+#print('\nProcessed: ',processed,'\n\n')
 
 # print(mdp.value_iteration(0.999,0.000001))
 # mdp.print_actions()
