@@ -412,6 +412,7 @@ def LAOGUBS(mdp, startState=None, processed=None):
         print('Expandido:', expanded)
         '''add any new successor states to Gprime following every action.'''
         for a in range(4):
+
             for t in expanded.T[a]:
                 state = mdp.S[t[0] - 1]
                 if state not in G:
@@ -508,16 +509,15 @@ def LAOGUBS(mdp, startState=None, processed=None):
 
 
 
-
-
 # Test Script
 mdp = MDP(4,4)
-#problems.swim_without_deadend(mdp.Nx,mdp.Ny,mdp.A,0.8,0,mdp)
+# problems.swim_without_deadend(mdp.Nx,mdp.Ny,mdp.A,0.8,0,mdp)
 problems.swim(mdp.Nx,mdp.Ny,mdp.A,0.8,0,True,mdp)
 print(mdp)
 
 mdp.set_costs(1)
 mdp.set_action(0)
+
 
 # LAOStar(mdp,1)
 processed = set()
