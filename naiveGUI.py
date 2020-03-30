@@ -27,9 +27,10 @@ def plot(mdp,functions):
     expandeds = set()
     G = [None]
     Z = [None]
+    startState=[True]
     label = Label(master,text="Tips",bg='#A0F9FF')
     label.grid(row=0,column=ny+1)
-    label = Label(master, text="Z", bg='#FCFE40')
+    label = Label(master, text="Z", bg='#FFC300')
     label.grid(row=1, column=ny + 1)
     label = Label(master, text="Expandido", bg='#FF5151')
     label.grid(row=0, column=ny + 2)
@@ -37,10 +38,19 @@ def plot(mdp,functions):
     label.grid(row=1, column=ny + 2)
     master.title('Etapas aparecerao aqui')
 
+    def run():
+        step()
+        while expanded[0]:
+            step()
+        runButton['state'] = 'disabled'
+
     def step():
         if func[0] == 0:
             master.title('Choose a node to expand')
             expanded[0] = functions[func[0]]()
+            if startState[0]:
+                states[expanded[0].number-1]['fg']='white'
+                startState[0]=False
         elif func[0] == 1:
             master.title('Add sucessors of the expanded to the explicit graph')
             G[0] = functions[func[0]](expanded[0])
@@ -70,13 +80,16 @@ def plot(mdp,functions):
 
         if Z[0] and func[0] == 3 or func[0]==0:
             for state in Z[0]:
-                states[state.number-1]['bg'] = '#FCFE40'
+                states[state.number-1]['bg'] = '#FFC300'
 
         if expanded[0]:
             states[expanded[0].number - 1]['bg'] = '#FF5151'
 
     nextButton = Button(master,text='Step',command=lambda: step())
     nextButton.grid(row=nx-1,column=ny+1)
+
+    runButton = Button(master, text='Run', command=lambda: run())
+    runButton.grid(row=nx - 1, column=ny + 2)
 
     mainloop()
 

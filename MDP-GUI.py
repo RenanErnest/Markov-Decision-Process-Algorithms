@@ -162,22 +162,18 @@ class MDP:
         #      + "\ngoal_vector = " + str(self.goal_vector()) + "\ncost_vector = " + str(self.cost_vector()) + "\n"
 
     # return an array of values and the actions
-    # editables is an array of integers that correpond to the number of states
-    def value_iteration(self, gamma: float, epsilon: float, editables=None):
-        if not editables:  # wheter nothing was passed as editables, we will consider all states in the mdp
-            editables = [s for s in self.S]
-        else:
-            for i in range(len(editables)):  # transforming integer into references to state's object
-                if type(editables[i]) != type(self.S[0]):
-                    editables[i] = self.S[editables[i] - 1]
+    # Z is an array of integers that correpond to the number of states
+    def value_iteration(self, gamma: float, epsilon: float, Z=None):
+        if not Z:  # wheter nothing was passed as Z, we will consider all states in the mdp
+            Z = [s for s in self.S]
 
         # value iteration
         res = float("Inf")
-        vk = [0] * len(editables)
-        vk1 = [0] * len(editables)
+        vk = [0] * len(Z)
+        vk1 = [0] * len(Z)
         while res > epsilon:
             aux = [[0 for s in range(len(self.S))] for a in range(self.A)]
-            for s in editables:
+            for s in Z:
                 minimum = float('Inf')
                 bestaction = 0
                 for a in range(self.A):
@@ -190,8 +186,8 @@ class MDP:
                 s.value = minimum
                 s.action = bestaction
 
-            for i in range(len(editables)):
-                vk1[i] = editables[i].value
+            for i in range(len(Z)):
+                vk1[i] = Z[i].value
             maxi = 0
             for i in range(len(vk1)):
                 summ = abs(vk1[i] - vk[i])
@@ -206,14 +202,17 @@ class MDP:
     def policy_iteration(self, gamma: float):
         pass
 
-    def dual_criterion_risk_sensitive(self, risk_factor, minimum_error):
+    def dual_criterion_risk_sensitive(self, risk_factor, minimum_error, Z=None):
+        if not Z:  # wheter nothing was passed as Z, we will consider all states in the mdp
+            Z = [s for s in self.S]
+
         # initializations
         delta1 = float('Inf')
         delta2 = 0
-        v_lambda = [0] * len(self.S)
         # probability to reach the goal
         pg = [0] * len(self.S)
-        for index in range(len(self.S)):
+        v_lambda = [0] * len(self.S)
+        for index in range(len(self.S)): #goals
             if self.S[index].goal:
                 v_lambda[index] = -1 if risk_factor > 0 else 1
                 pg[index] = 1
@@ -225,146 +224,62 @@ class MDP:
                 summ += s_prime[1] * p_previous[s_prime[0] - 1]
             return summ
 
+
         while delta1 >= minimum_error or delta2 <= 0:
             v_previous = v_lambda.copy()
             p_previous = pg.copy()
-            A = [[] for i in range(len(self.S))]
-            for state_index in range(len(self.S)):
-                pg[state_index] = max(self.S[state_index].T, key=p_sum)
+            A = [[] for i in range(len(Z))]
+            for state_index in range(len(Z)):
+                if Z[state_index].goal:
+                    continue
+                A[state_index] = []
+                pg[state_index] = p_sum(max(Z[state_index].T, key=p_sum))
                 # keeping all the actions that tie in the A list
-                for transiction_index in range(len(self.S[state_index].T)):
-                    if p_sum(self.S[state_index].T[transiction_index]) == pg[state_index]:
+                for transiction_index in range(len(Z[state_index].T)):
+                    if p_sum(Z[state_index].T[transiction_index]) == pg[state_index]:
                         A[state_index].append(transiction_index)
 
-                v_lambda[state_index] = A[state_index][0]
+                max_v_lambda = -float('Inf')
                 best_action = 0
                 for a in A[state_index]:
                     summ = 0
-                    for s_prime_transaction in range(len(self.S[state_index].T[a])):
-                        summ += s_prime_transaction[1] * v_previous[s_prime_transaction[0]]
-                    risk_value = math.exp(risk_factor * self.S[state_index].cost) * summ
-                    if risk_value > v_lambda[state_index]:
-                        v_lambda[state_index] = risk_value
+                    for s_prime_transaction in Z[state_index].T[a]:
+                        summ += s_prime_transaction[1] * v_previous[s_prime_transaction[0]-1]
+                    risk_value = math.exp(risk_factor * Z[state_index].cost) * summ
+                    if risk_value > max_v_lambda:
+                        max_v_lambda = risk_value
                         best_action = a
+                v_lambda[state_index] = max_v_lambda
 
-                self.S[state_index].action = best_action
+                # updating best action
+                Z[state_index].action = best_action
 
             # update deltas
+            delta1 = abs(v_lambda[0] - v_previous[0]) + abs(pg[0] - p_previous[0])
             for state_index in range(len(self.S)):
-                delta1 = max(delta1, abs(v_lambda[state_index] - v_previous[state_index]) + abs(
+                delta1 = max(delta1,abs(v_lambda[state_index] - v_previous[state_index]) + abs(
                     pg[state_index] - p_previous[state_index]))
 
-                all_actions = set([i for i in range(self.A)])
+            n_delta2 = float('Inf')
+            all_actions = set([i for i in range(self.A)])
+            for state_index in range(len(Z)):
                 max_prob_actions = set(A[state_index])
                 poor_actions = all_actions - max_prob_actions
                 for a in poor_actions:
                     summ = 0
-                    for s_prime_transaction in range(len(self.S[state_index].T[a])):
-                        summ += s_prime_transaction[1] * pg[s_prime_transaction[0]]
-                    delta2 = min(delta2, pg[state_index] - summ)
+                    for s_prime_transaction in Z[state_index].T[a]:
+                        summ += s_prime_transaction[1] * pg[s_prime_transaction[0] - 1]
+                    n_delta2 = min(n_delta2, pg[state_index] - summ)
+            delta2 = n_delta2
 
+            print(delta1,delta2)
 
-def LAOStar(mdp, startState=None):
-    if not startState:  # wheter nothing was passed as editables, we will consider all states in the mdp
-        startState = mdp.S[0]
-    else:
-        if type(startState) != type(mdp.S[0]):
-            startState = mdp.S[startState - 1]
+        gui.plot(self, [])
 
-    # Heuristic
-    def h(state):
-        # aux = mdp.S
-        # mdp.value_iteration(0.999, 0.000001)
-        return 0
-
-    # LAOStar
-    startState.tip = True
-    G = [startState]  # Explicit graph
-    while True:
-
-        '''Expand some nonterminal tip state n of the best partial solution graph'''
-        # BFS
-        expanded = None
-        states = [startState]
-        visited = [False] * len(mdp.S)
-        while states:
-            s = states.pop(0)
-            if s.tip:
-                expanded = s
-                break
-            else:
-                for t in s.T[s.action]:
-                    state = mdp.S[t[0] - 1]
-                    if not visited[state.number - 1]:
-                        states.append(state)
-                        visited[state.number - 1] = True
-
-        # There are no tips
-        if not expanded:
-            break
-
-        expanded.tip = False
-
-        print("G' antes", G)
-        print('Expandido:', expanded)
-        '''add any new successor states to Gprime.'''
-        for a in range(4):
-            for t in expanded.T[a]:
-                state = mdp.S[t[0] - 1]
-                if state not in G:
-                    G.append(state)
-                    state.tip = True
-                    if state.goal:
-                        state.value = 0
-                    else:
-                        state.value = h(state)
-
-        print("G' depois", G)
-
-        mdp.print_actions()
-
-        ''' Create a set Z that contains the expanded state and all of its ancestors in the explicit graph along
-            marked action arcs. '''
-        # DFS with path
-        Z = []
-        for start in G:
-            states = [start]
-            path = []
-            visited = [False] * len(mdp.S)
-            while states:
-                s = states.pop()
-                visited[s.number - 1] = True
-                path.append(s)
-
-                child = False
-
-                if s == expanded:
-                    for state in path:
-                        if state not in Z:
-                            Z.append(state)
-                else:
-                    for t in s.T[s.action]:
-                        state = mdp.S[t[0] - 1]
-                        if not visited[state.number - 1]:
-                            child = True
-                            states.append(state)
-
-                if not child:
-                    path.pop()
-                    visited[s.number - 1] = False
-
-        '''Perform dynamic programming on the states in set Z to update
-            state costs and determine the best action for each state.'''
-        print('Z', Z)
-        print(mdp.value_iteration(0.999, 0.000001, Z))
-
-        print('After update costs:')
-        mdp.print_actions()
-        print()
 
 
 def LAOGUBS(mdp, startState=None, processed=None):
-    if not startState:  # wheter nothing was passed as editables, we will consider all states in the mdp
+    if not startState:
         startState = mdp.S[0]
     else:
         if type(startState) != type(mdp.S[0]):
@@ -507,6 +422,149 @@ def LAOGUBS(mdp, startState=None, processed=None):
             visited[s.number - 1] = False
     return best_solution_graph
 
+def LAOGUBS2(mdp, startState=None, processed=None):
+    if not startState:
+        startState = mdp.S[0]
+    else:
+        if type(startState) != type(mdp.S[0]):
+            startState = mdp.S[startState - 1]
+
+    # Heuristic
+    def h(state):
+        # aux = mdp.S
+        # mdp.value_iteration(0.999, 0.000001)
+        return 1
+
+    # LAOStar
+    startState.tip = True
+    G = set([startState])  # Explicit graph
+
+    def expand():
+        '''
+            Expand some nonterminal tip state n of the best partial solution graph
+            We do a breadth-first search from the start state following the best action
+            of each state until reach a tip
+        '''
+        # BFS
+        expanded = None
+        bfs = [startState]
+        visited = [False] * len(mdp.S)
+        while bfs:
+            s = bfs.pop(0)
+            if s.tip:
+                expanded = s
+                break
+            else:
+                for t in s.T[s.action]:
+                    state = mdp.S[t[0] - 1]
+                    if not visited[state.number - 1]:
+                        bfs.append(state)
+                        visited[state.number - 1] = True
+
+        # if there are no tips the LAOStar algorithm ends
+        if not expanded or expanded in processed:
+            return None
+
+        # the expanded node chosen is no more a tip
+        expanded.tip = False
+
+        return expanded
+
+    def sucessors(expanded):
+        '''add any new successor states to Gprime following every action.'''
+        for a in range(4):
+
+            for t in expanded.T[a]:
+                state = mdp.S[t[0] - 1]
+                if state not in G:
+                    G.add(state)
+                    state.tip = True
+                    if state.goal:
+                        state.value = 0
+                    elif state not in processed:  # resusing the previous value of the states in the processed set
+                        state.value = h(state)
+        return G
+
+    def setZ(expanded):
+        '''
+            Create a set Z that contains the expanded state and all of its ancestors in the explicit graph along
+            marked action arcs.
+            Here we do from every state in the explicit graph a deepth-first search keeping the path
+            Then if the path from a start state x reaches the expanded state we add this path to the set Z
+            At the end of this part we will have all the states in the explicit graph that can reach the expanded state
+            In other words, all of its ancestors
+        '''
+        # DFS with path
+        Z = set()
+        for start in G:
+            dfs = [start]
+            path = []
+            visited = [False] * len(mdp.S)
+            while dfs:
+                s = dfs.pop()
+                visited[s.number - 1] = True
+                path.append(s)
+
+                child = False
+
+                if s == expanded:
+                    for state in path:
+                        Z.add(state)
+                else:
+                    for t in s.T[s.action]:
+                        state = mdp.S[t[0] - 1]
+                        if not visited[state.number - 1]:
+                            child = True
+                            dfs.append(state)
+
+                if not child:
+                    path.pop()
+                    visited[s.number - 1] = False
+        return Z
+
+    def update(Z):
+        '''
+            Perform dynamic programming on the states in set Z to update
+        state costs and determine the best action for each state.
+        '''
+        mdp.value_iteration(0.999, 0.000001, list(Z))
+
+    gui.plot(mdp, [expand,sucessors,setZ,update])
+
+    '''
+        Extracting the best solution graph obtained by the LAOStar algorithm.
+        We keep this graph in order to reuse it if another call to this algorithm ends up
+        trying to calculate a node that was already calculated by previous calls.
+        We use a deepth-first search keeping the path until reach the goal state
+    '''
+    best_solution_graph = set()
+    dfs = [startState]
+    path = []
+    visited = [False] * len(mdp.S)
+    while dfs:
+        s = dfs.pop()
+        visited[s.number - 1] = True
+        path.append(s)
+
+        child = False
+
+        if s.goal:
+            for state in path:
+                best_solution_graph.add(state)
+        else:
+            # iterate through every state reached by the current state following the best action
+            for t in s.T[s.action]:
+                state = mdp.S[t[0] - 1]
+                if not visited[state.number - 1]:
+                    child = True
+                    dfs.append(state)
+
+        # reach a tip that is not a goal state
+        if not child:
+            path.pop()
+            visited[s.number - 1] = False
+    return best_solution_graph
+
 
 # Test Script
 mdp = MDP(4, 4)
@@ -517,15 +575,17 @@ print(mdp)
 mdp.set_costs(1)
 mdp.set_action(0)
 
-# LAOStar(mdp,1)
+#mdp.dual_criterion_risk_sensitive(0.999,0.1)
+#mdp.dual_criterion_risk_sensitive(0.999,0.1,[mdp.S[3],mdp.S[7],mdp.S[11],mdp.S[15]])
+#mdp.dual_criterion_risk_sensitive(0.999,0.1,[mdp.S[15],mdp.S[14],mdp.S[13],mdp.S[12]])
+
 processed = set()
-# processed.update(LAOGUBS(mdp,12, processed))
 processed.update(LAOGUBS(mdp, 14, processed))
 print('bsg: ', processed, '\n\n\n')
 processed.update(LAOGUBS(mdp, 15, processed))
-# print('\nProcessed: ',processed,'\n\n')
-# processed.update(LAOGUBS(mdp,2, processed))
-# print('\nProcessed: ',processed,'\n\n')
+print('\nProcessed: ',processed,'\n\n')
+processed.update(LAOGUBS(mdp,2, processed))
+print('\nProcessed: ',processed,'\n\n')
 
 # print(mdp.value_iteration(0.999,0.000001))
 # mdp.print_actions()
