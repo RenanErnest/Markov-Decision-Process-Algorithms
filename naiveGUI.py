@@ -5,7 +5,16 @@ from tkinter import PhotoImage
 def plot(mdp,functions):
     nx = mdp.Nx
     ny = mdp.Ny
-    master = Tk()
+    root = Tk()
+    frame = Frame(root)
+    Grid.rowconfigure(root, 0, weight=1)
+    Grid.columnconfigure(root, 0, weight=1)
+    frame.grid(row=0, column=0, sticky=N + S + E + W)
+    grid = Frame(frame)
+    grid.grid(sticky=N + S + E + W, column=0, row=7, columnspan=2)
+    Grid.rowconfigure(frame, 7, weight=1)
+    Grid.columnconfigure(frame, 0, weight=1)
+
     arrows = [PhotoImage(file="images/upArrow.png"), PhotoImage(file="images/downArrow.png"),
               PhotoImage(file="images/rightArrow.png"), PhotoImage(file="images/leftArrow.png")]
     states = []
@@ -14,29 +23,37 @@ def plot(mdp,functions):
     for i in range(nx):
         for j in reversed(range(ny)):
             s = str(n) + '\nV:' + str(round(mdp.S[n-1].value,3))
-            states.append(Button(master,text=s, image=arrows[mdp.S[n-1].action], compound='center', font=font.Font(size=10)))
-            states[n-1].grid(row=j,column=i)
+            states.append(Button(frame,text=s, image=arrows[mdp.S[n-1].action], compound='center', font=font.Font(size=10)))
+            states[n-1].grid(row=j,column=i,sticky=N+S+E+W)
             n+=1
 
+
+
     s = str(n) + '\nV:' + str(round(mdp.S[n-1].value,3))
-    states.append(Button(master,text=s, image=arrows[mdp.S[n-1].action], compound='center', font=font.Font(size=10)))
-    states[n-1].grid(row=nx-2, column=ny+1)
+    states.append(Button(frame,text=s, image=arrows[mdp.S[n-1].action], compound='center', font=font.Font(size=10)))
+    states[n-1].grid(row=nx-2, column=ny+1,sticky=N+S+E+W)
+
+    for i in range(nx):
+        Grid.columnconfigure(frame, i, weight=1)
+
+    for i in range(ny+1):
+        Grid.rowconfigure(frame, i, weight=1)
 
     func = [0]
     expanded = [None]
     expandeds = set()
-    G = [None]
+    G = [set()] # Explicit graph
     Z = [None]
     startState=[True]
-    label = Label(master,text="Tips",bg='#A0F9FF')
-    label.grid(row=0,column=ny+1)
-    label = Label(master, text="Z", bg='#FFC300')
-    label.grid(row=1, column=ny + 1)
-    label = Label(master, text="Expandido", bg='#FF5151')
-    label.grid(row=0, column=ny + 2)
-    label = Label(master, text="G'-Tips", bg='#0A767D')
+    label = Label(frame,text="Tips",bg='#A0F9FF')
+    label.grid(row=0,column=ny+2)
+    label = Label(frame, text="Z", bg='#FFC300')
     label.grid(row=1, column=ny + 2)
-    master.title('Etapas aparecerao aqui')
+    label = Label(frame, text="Expandido", bg='#FF5151')
+    label.grid(row=0, column=ny + 3)
+    label = Label(frame, text="G'-Tips", bg='#0A767D')
+    label.grid(row=1, column=ny + 3)
+    root.title('Etapas aparecerao aqui')
 
     def run():
         step()
@@ -46,19 +63,51 @@ def plot(mdp,functions):
 
     def step():
         if func[0] == 0:
-            master.title('Choose a node to expand')
+            root.title('Choose a node to expand')
             expanded[0] = functions[func[0]]()
+            for state in states:
+                state['bg'] = '#f0f0f0' #default color
+
+            if G[0]:
+                for state in G[0]:
+                    states[state.number-1]['bg'] = '#A0F9FF'
+
+            for n in expandeds:
+                states[n - 1]['bg'] = '#0A767D'
+
+            if expanded[0]:
+                states[expanded[0].number - 1]['bg'] = '#FF5151'
+
             if startState[0]:
                 states[expanded[0].number-1]['fg']='white'
+                G[0].add(expanded[0])
                 startState[0]=False
+
         elif func[0] == 1:
-            master.title('Add sucessors of the expanded to the explicit graph')
-            G[0] = functions[func[0]](expanded[0])
+            root.title('Add sucessors of the expanded to the explicit graph')
+            G[0] = functions[func[0]](expanded[0],G[0])
+
+            if G[0]:
+                for state in G[0]:
+                    states[state.number - 1]['bg'] = '#A0F9FF'
+            for n in expandeds:
+                states[n - 1]['bg'] = '#0A767D'
+
+            if expanded[0]:
+                states[expanded[0].number - 1]['bg'] = '#FF5151'
+
         elif func[0] == 2:
-            master.title('Z with all ancestors of the expanded node')
-            Z[0] = functions[func[0]](expanded[0])
+            root.title('Z with all ancestors of the expanded node')
+            Z[0] = functions[func[0]](expanded[0],G[0])
+
+            if Z[0]:
+                for state in Z[0]:
+                    states[state.number - 1]['bg'] = '#FFC300'
+
+            # if expanded[0]:
+            #     states[expanded[0].number - 1]['bg'] = '#FF5151'
         else:
-            master.title('Updating values')
+            root.title('Updating values')
             functions[func[0]](Z[0])
         func[0] = (func[0]+1)%len(functions)
 
@@ -72,23 +121,10 @@ def plot(mdp,functions):
         else:
             expandeds.add(expanded[0].number)
 
-        if G[0]:
-            for state in G[0]:
-                states[state.number-1]['bg'] = '#A0F9FF'
-        for n in expandeds:
-            states[n - 1]['bg'] = '#0A767D'
-
-        if Z[0] and func[0] == 3 or func[0]==0:
-            for state in Z[0]:
-                states[state.number-1]['bg'] = '#FFC300'
-
-        if expanded[0]:
-            states[expanded[0].number - 1]['bg'] = '#FF5151'
-
-    nextButton = Button(master,text='Step',command=lambda: step())
+    nextButton = Button(frame,text='Step',command=lambda: step())
     nextButton.grid(row=nx-1,column=ny+1)
 
-    runButton = Button(master, text='Run', command=lambda: run())
+    runButton = Button(frame, text='Run', command=lambda: run())
     runButton.grid(row=nx - 1, column=ny + 2)
 
     mainloop()

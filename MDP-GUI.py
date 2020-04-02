@@ -171,6 +171,7 @@ class MDP:
         res = float("Inf")
         vk = [0] * len(Z)
         vk1 = [0] * len(Z)
+
         while res > epsilon:
             aux = [[0 for s in range(len(self.S))] for a in range(self.A)]
             for s in Z:
@@ -193,8 +194,8 @@ class MDP:
                 summ = abs(vk1[i] - vk[i])
                 if summ > maxi:
                     maxi = summ
-
             res = maxi
+
             vk = [value for value in vk1]
 
         return vk1
@@ -211,6 +212,10 @@ class MDP:
         delta2 = 0
         # probability to reach the goal
         pg = [0] * len(self.S)
+
+        for state in range(len(Z)):
+            Z[state].value = 0
+
         v_lambda = [0] * len(self.S)
         for index in range(len(self.S)): #goals
             if self.S[index].goal:
@@ -251,7 +256,8 @@ class MDP:
                         best_action = a
                 v_lambda[state_index] = max_v_lambda
 
-                # updating best action
+                # updating best action and values
+                Z[state_index].value = pg[state_index]
                 Z[state_index].action = best_action
 
             # update deltas
@@ -470,7 +476,7 @@ def LAOGUBS2(mdp, startState=None, processed=None):
 
         return expanded
 
-    def sucessors(expanded):
+    def sucessors(expanded,G):
         '''add any new successor states to Gprime following every action.'''
         for a in range(4):
 
@@ -485,41 +491,43 @@ def LAOGUBS2(mdp, startState=None, processed=None):
                         state.value = h(state)
         return G
 
-    def setZ(expanded):
+    def setZ(expanded, G):
         '''
             Create a set Z that contains the expanded state and all of its ancestors in the explicit graph along
             marked action arcs.
-            Here we do from every state in the explicit graph a deepth-first search keeping the path
+            Here we do from every state in the explicit graph a recursion keeping the path
             Then if the path from a start state x reaches the expanded state we add this path to the set Z
             At the end of this part we will have all the states in the explicit graph that can reach the expanded state
             In other words, all of its ancestors
         '''
+
+        def recursion(s,path,visited,Z):
+            visited[s.number - 1] = True
+            path.append(s)
+            child = False
+
+            if s == expanded:
+                for state in path:
+                    Z.add(state)
+            else:
+                for t in s.T[s.action]:
+                    state = mdp.S[t[0] - 1]
+                    if not visited[state.number - 1] and state in G:
+                        if not child:
+                            child = recursion(state,path,visited,Z)
+
+            if not child:
+                path.pop()
+                visited[s.number - 1] = False
+
+            return child
+
         # DFS with path
         Z = set()
         for start in G:
-            dfs = [start]
             path = []
             visited = [False] * len(mdp.S)
-            while dfs:
-                s = dfs.pop()
-                visited[s.number - 1] = True
-                path.append(s)
-
-                child = False
-
-                if s == expanded:
-                    for state in path:
-                        Z.add(state)
-                else:
-                    for t in s.T[s.action]:
-                        state = mdp.S[t[0] - 1]
-                        if not visited[state.number - 1]:
-                            child = True
-                            dfs.append(state)
-
-                if not child:
-                    path.pop()
-                    visited[s.number - 1] = False
+            recursion(start, path, visited,Z)
         return Z
 
     def update(Z):
@@ -566,28 +574,28 @@ def LAOGUBS2(mdp, startState=None, processed=None):
     return best_solution_graph
 
 
+x = int(input('Quantidade de estados no eixo X: '))
+y = int(input('Quantidade de estados no eixo Y: '))
+probFall = float(input('Probabilidade de ser levado pela correnteza: '))
+
 # Test Script
-mdp = MDP(4, 4)
+mdp = MDP(x, y)
 # problems.swim_without_deadend(mdp.Nx,mdp.Ny,mdp.A,0.8,0,mdp)
-problems.swim(mdp.Nx, mdp.Ny, mdp.A, 0.8, 0, True, mdp)
+problems.swim(mdp.Nx, mdp.Ny, mdp.A, probFall, 0, True, mdp)
 print(mdp)
 
 mdp.set_costs(1)
 mdp.set_action(0)
 
-#mdp.dual_criterion_risk_sensitive(0.999,0.1)
-#mdp.dual_criterion_risk_sensitive(0.999,0.1,[mdp.S[3],mdp.S[7],mdp.S[11],mdp.S[15]])
-#mdp.dual_criterion_risk_sensitive(0.999,0.1,[mdp.S[15],mdp.S[14],mdp.S[13],mdp.S[12]])
+# mdp.dual_criterion_risk_sensitive(0.999,0.1)
+# # mdp.dual_criterion_risk_sensitive(0.999,0.1,[mdp.S[3],mdp.S[7],mdp.S[11],mdp.S[15]])
+# mdp.dual_criterion_risk_sensitive(0.999,0.1,[mdp.S[15],mdp.S[14],mdp.S[13],mdp.S[12]])
 
 processed = set()
-processed.update(LAOGUBS(mdp, 14, processed))
-print('bsg: ', processed, '\n\n\n')
-processed.update(LAOGUBS(mdp, 15, processed))
-print('\nProcessed: ',processed,'\n\n')
-processed.update(LAOGUBS(mdp,2, processed))
-print('\nProcessed: ',processed,'\n\n')
+# processed.update(LAOGUBS(mdp, 14, processed))
+# print('bsg: ', processed, '\n\n\n')
+# processed.update(LAOGUBS(mdp, 15, processed))
+# print('\nProcessed: ',processed,'\n\n')
+processed.update(LAOGUBS2(mdp,2, processed))
+# print('\nProcessed: ',processed,'\n\n')
 
-# print(mdp.value_iteration(0.999,0.000001))
-# mdp.print_actions()
-# print(mdp.value_iteration(0.999,0.000001,[1,2,3]))
-# print(mdp.value_iteration(0.999,0.000001,[1,2,3,5]))
