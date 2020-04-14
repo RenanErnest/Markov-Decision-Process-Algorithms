@@ -117,6 +117,12 @@ def swim(nx,ny,na,probFlow, probFall, bridge, mdp=None):
                 s1 = x1 * ny + y1;
                 T[a][s][s1] = 1;
 
+    # setting goal
+    # goal_state = (nx - 1) * ny
+    goal_state = nx * ny
+    mdp.S[goal_state].cost = 0
+    mdp.S[goal_state].goal = True
+
     for a in range(na):
         for s2 in range(nstates):
             T[a][(nx - 1) * ny][s2] = 0
@@ -240,6 +246,12 @@ def swim_without_deadend(nx,ny,na,probFlow, probFall, mdp=None):
                 y1 = y;
                 s1 = x1 * ny + y1;
                 T[a][s][s1] = 1;
+
+    # setting goal
+    # goal_state = (nx - 1) * ny
+    goal_state = nx * ny
+    mdp.S[goal_state].cost = 0
+    mdp.S[goal_state].goal = True
 
     for a in range(na):
         for s2 in range(nstates):
@@ -365,6 +377,12 @@ def swim_symmetric(nx,ny,na,probFlow, probFall, bridge, mdp=None):
                 y1 = y;
                 s1 = x1 * ny + y1;
                 T[a][s][s1] = 1;
+
+    # setting goal
+    # goal_state = (nx - 1) * ny
+    goal_state = nx*ny
+    mdp.S[goal_state].cost = 0
+    mdp.S[goal_state].goal = True
 
     for a in range(na):
         for s2 in range(nstates):

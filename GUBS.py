@@ -8,11 +8,11 @@ import math
 # import numpy as np
 
 class State:
-    def __init__(self, number: int, cost: int, goal: bool):
+    def __init__(self, number: int, cost: int, goal: bool, actions: int):
         self.number = number
         self.cost = cost
         self.goal = goal
-        self.T = [[] for i in range(4)]  # a set of states and a set of probabilities for each action
+        self.T = [[] for i in range(actions)]  # a set of states and a set of probabilities for each action
         self.value = cost  # whatever
         self.probReachGoal = 0
         self.action = 0  # best action at that moment
@@ -30,7 +30,7 @@ class MDP:
         self.A = 4
         self.S = []
         for num in range(Nx * Ny + 1):
-            self.S.append(State(num + 1, 1, False))
+            self.S.append(State(num + 1, 1, False,self.A))
         # goal_state = (Nx - 1) * Ny
         goal_state = Nx*Ny
         self.S[goal_state].cost = self.S[Nx * Ny].cost = 0
@@ -282,6 +282,7 @@ class MDP:
                         summ += s_prime_transaction[1] * pg[s_prime_transaction[0] - 1]
                     n_delta2 = min(n_delta2, pg[state.number-1] - summ)
             delta2 = n_delta2
+            print(delta1, delta2)
 
 
 def LAOGUBS(mdp, risk_factor, error_minimum, startState=None, processed=None):
@@ -442,6 +443,8 @@ mdp = MDP(8, 6)
 # problems.swim_without_deadend(mdp.Nx,mdp.Ny,mdp.A,0.8,0,mdp)
 #problems.swim(mdp.Nx, mdp.Ny, mdp.A, 0.8, 0, True, mdp)
 problems.swim_symmetric(mdp.Nx, mdp.Ny, mdp.A, 0.8, 0, True, mdp)
+mdp = MDP(4, 10)
+problems.swim_symmetric(mdp.Nx, mdp.Ny, mdp.A, 0.8, 0, True, mdp)
 print(mdp)
 
 mdp.set_costs(1)
@@ -465,6 +468,6 @@ processed = set()
 # print('bsg: ', processed, '\n\n\n')
 # processed.update(LAOGUBS(mdp, 15, processed))
 # print('\nProcessed: ',processed,'\n\n')
-processed.update(LAOGUBS(mdp,29, processed))
+# processed.update(LAOGUBS(mdp,29, processed))
 # print('\nProcessed: ',processed,'\n\n')
 
