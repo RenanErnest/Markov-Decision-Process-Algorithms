@@ -161,7 +161,7 @@ class MDP:
     # return an array of values and the actions
     # Z is an array of integers that correpond to the number of states
     def value_iteration(self, gamma: float, epsilon: float, Z=None):
-        if not Z:  # wheter nothing was passed as Z, we will consider all states in the mdp
+        if not Z:  # whether nothing was passed as Z, we will consider all states in the mdp
             Z = [s for s in self.S]
 
         # value iteration
@@ -333,7 +333,7 @@ def LAOGUBS(mdp, risk_factor, error_minimum, startState=None, processed=None):
 
         return expanded
 
-    def sucessors(expanded,G):
+    def successors(expanded,G):
         '''add any new successor states to Gprime following every action.'''
         for a in range(4):
 
@@ -397,7 +397,7 @@ def LAOGUBS(mdp, risk_factor, error_minimum, startState=None, processed=None):
         # mdp.value_iteration(0.999, 0.000001, list(Z))
         mdp.dual_criterion_risk_sensitive(-0.01,0.001, list(Z))
 
-    gui.plot(mdp, [expand,sucessors,setZ,update])
+    gui.plot(mdp, [expand,successors,setZ,update])
 
     '''
         Extracting the best solution graph obtained by the LAOStar algorithm.

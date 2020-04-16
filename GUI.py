@@ -13,7 +13,7 @@ def init_grid():
     grid.grid(sticky=N + S + E + W, column=0, row=7, columnspan=2)
     Grid.rowconfigure(frame, 7, weight=1)
     Grid.columnconfigure(frame, 0, weight=1)
-    return frame
+    return root,frame
 
 
 def plot(mdp, values, labels, best_actions):
@@ -23,7 +23,7 @@ def plot(mdp, values, labels, best_actions):
         etc, so this param is commonly a list of lists
     :param labels: a list of labels to be plotted with the values, for example 'rv','pg',etc
     """
-    frame = init_grid()
+    (root,frame) = init_grid()
     nx = mdp.Nx
     ny = mdp.Ny
     arrows = [PhotoImage(file="images/upArrow.png"), PhotoImage(file="images/downArrow.png"),
@@ -61,29 +61,43 @@ def plot(mdp, values, labels, best_actions):
 f = 0  # global variable used on step_plot function
 
 
-def step_plot(mdp,stepFunctions):
+def step_plot(mdp,stepFunctions,titles=None):
     '''
     :param mdp: a mdp object
     :param stepFunctions: an in order list of step functions
+    :param titles: a list of titles for each step
     '''
 
     def step():
         # getting values
         global f
-        (values, labels, best_actions) = stepFunctions[f]()
-        f = (f+1)%len(stepFunctions)
+        (values, labels, best_actions, colors) = stepFunctions[f](stepButton)
+
 
         # updating values
-        n = 1
-        for state in states:
-            s = str(n)
-            for k in range(len(values)):
-                s += '\n' + labels[k] + ':' + str(round(values[k][n - 1], 3))
-            state['text'] = s
-            state['image'] = arrows[best_actions[n-1]]
-            n += 1
+        if values:
+            n = 1
+            for state in states:
+                s = str(n)
+                for k in range(len(values)):
+                    s += '\n' + labels[k] + ':' + str(round(values[k][n - 1], 3))
+                state['text'] = s
+                state['image'] = arrows[best_actions[n-1]]
+                n += 1
 
-    frame = init_grid()
+        # updating title
+        if titles:
+            root.title(titles[f])
+
+        # updating colors
+        if colors:
+            for i in range(len(states)):
+                states[i]['bg'] = colors[i]
+
+        # increment function index
+        f = (f + 1) % len(stepFunctions)
+
+    (root,frame) = init_grid()
     nx = mdp.Nx
     ny = mdp.Ny
     arrows = [PhotoImage(file="images/upArrow.png"), PhotoImage(file="images/downArrow.png"),
@@ -101,7 +115,7 @@ def step_plot(mdp,stepFunctions):
 
     s = str(n)
     states.append(Button(frame, text=s, image=arrows[0], compound='center', font=font.Font(size=10)))
-    states[n - 1].grid(row=ny - 1, column=nx + 3, sticky=N + S + E + W)
+    states[n - 1].grid(row=ny - 2, column=nx + 3, sticky=N + S + E + W)
 
     for i in range(nx):
         Grid.columnconfigure(frame, i, weight=1)
@@ -110,6 +124,6 @@ def step_plot(mdp,stepFunctions):
         Grid.rowconfigure(frame, i, weight=1)
 
     stepButton = Button(frame, text='Step', compound='right', command=lambda: step())
-    stepButton.grid(row=ny - 1, column=nx + 3, sticky=N + S + E + W)
+    stepButton.grid(row=ny-1, column=nx + 3, sticky=N + S + E + W)
 
     mainloop()
