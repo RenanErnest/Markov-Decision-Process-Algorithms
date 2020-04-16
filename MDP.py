@@ -80,7 +80,6 @@ class MDP:
                                 break
                         T[action][self.S.index(state)][self.S.index(aux)] = t['prob']
                     except:
-                        # traceback.print_exc()
                         pass
         return T
 
@@ -163,7 +162,7 @@ def dual_criterion_risk_sensitive(mdp, risk_factor, minimum_error):
     delta2 = 0
     v_lambda = [0] * len(mdp.S)  # risk values
     pg = [0] * len(mdp.S)  # probability to reach the goal
-    best_actions = [0] * len(mdp.S)
+    best_actions = [0] * len(mdp.S)  # best policy that gave us the best values
 
     for s in mdp.S:  # goal states treatment
         if s.goal:
@@ -187,6 +186,7 @@ def dual_criterion_risk_sensitive(mdp, risk_factor, minimum_error):
         p_previous = pg.copy()
 
         A = [[] for i in range(len(mdp.S))]  # max prob actions for each state
+
         for s in mdp.S:
 
             if s.goal:
@@ -205,8 +205,9 @@ def dual_criterion_risk_sensitive(mdp, risk_factor, minimum_error):
             # risk value section
             best_action = max(A[s.number - 1], key=lambda a: math.exp(risk_factor * s.cost) *
                                                                         linear_combination(s.T[a], v_previous))
-            best_actions[s.number-1] = best_action
             v_lambda[s.number - 1] = math.exp(risk_factor * s.cost) * linear_combination(s.T[best_action], v_previous)
+            best_actions[s.number-1] = best_action
+
 
         # updating deltas
         n_delta1 = -float('Inf')
@@ -223,27 +224,26 @@ def dual_criterion_risk_sensitive(mdp, risk_factor, minimum_error):
             max_prob_actions = set(A[s.number-1])
             poor_actions = all_actions - max_prob_actions
             for a in poor_actions:
-                n_delta2 = min(n_delta2, pg[s.number-1] - linear_combination(s.T[a], p_previous))
+                n_delta2 = min(n_delta2, pg[s.number-1] - linear_combination(s.T[a], pg))
 
         delta1 = n_delta1
         ''' if the mdp only has absorber states there will be no poor actions and the delta2 cannot be changed'''
         delta2 = n_delta2 if n_delta2 != float('Inf') else delta2
 
-        print(delta1,delta2)
 
     return pg,v_lambda,best_actions
 
 
 # Test Script
-mdp = MDP(10, 10, 4)
-problems.swim_symmetric(mdp.Nx, mdp.Ny, mdp.A, 0.8, 0, True, mdp)
-print(mdp)
-mdp.set_costs(1)
-
-# Costs value iteration
-(cost_values,best_actions) = value_iteration(mdp, 0.999, 0.0001)
-gui.plot(mdp,[cost_values],['V'],best_actions)
-
-# Dual criterion
-(prob_to_goal,risk_values,best_actions) = dual_criterion_risk_sensitive(mdp, -0.01, 0.001)
-gui.plot(mdp,[prob_to_goal,risk_values],['PG','V'],best_actions)
+# mdp = MDP(4, 8, 4)
+# problems.swim_symmetric(mdp.Nx, mdp.Ny, mdp.A, 0.8, 0, True, mdp)
+# print(mdp)
+# mdp.set_costs(1)
+#
+# # Costs value iteration
+# (cost_values,best_actions) = value_iteration(mdp, 0.999, 0.0001)
+# gui.plot(mdp,[cost_values],['V'],best_actions)
+#
+# # Dual criterion
+# (prob_to_goal,risk_values,best_actions) = dual_criterion_risk_sensitive(mdp, -0.01, 0.0001)
+# gui.plot(mdp,[prob_to_goal,risk_values],['PG','V'],best_actions)

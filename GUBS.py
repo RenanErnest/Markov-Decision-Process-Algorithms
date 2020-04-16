@@ -443,7 +443,7 @@ mdp = MDP(8, 6)
 # problems.swim_without_deadend(mdp.Nx,mdp.Ny,mdp.A,0.8,0,mdp)
 #problems.swim(mdp.Nx, mdp.Ny, mdp.A, 0.8, 0, True, mdp)
 problems.swim_symmetric(mdp.Nx, mdp.Ny, mdp.A, 0.8, 0, True, mdp)
-mdp = MDP(4, 10)
+mdp = MDP(4, 8)
 problems.swim_symmetric(mdp.Nx, mdp.Ny, mdp.A, 0.8, 0, True, mdp)
 print(mdp)
 
@@ -452,12 +452,13 @@ mdp.set_action(0)
 
 # GUBS
 risk_factor = -0.01
-error_minimum = 0.001
+error_minimum = 0.0001
 value = 0
 
 mdp.set_value(value)
 
 mdp.dual_criterion_risk_sensitive(risk_factor,error_minimum)
+
 # mdp.dual_criterion_risk_sensitive(risk_factor,error_minimum,[mdp.S[3],mdp.S[7],mdp.S[11],mdp.S[15]])
 # mdp.dual_criterion_risk_sensitive(risk_factor,error_minimum,[mdp.S[10],mdp.S[7],mdp.S[11],mdp.S[15]])
 # mdp.dual_criterion_risk_sensitive(risk_factor,error_minimum,[mdp.S[15],mdp.S[14],mdp.S[13],mdp.S[12]])
