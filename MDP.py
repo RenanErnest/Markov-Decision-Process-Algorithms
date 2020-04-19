@@ -149,7 +149,7 @@ def value_iteration(mdp, gamma=0.999, epsilon=0.00001):
     return vk1, best_actions
 
 
-def dual_criterion_risk_sensitive(mdp, risk_factor, minimum_error):
+def dual_criterion_risk_sensitive(mdp, risk_factor=-0.01, minimum_error=0.0001):
     """
     update the values of the state's object and also returns a list with the values of each state
     :param mdp: a MDP object
@@ -227,8 +227,8 @@ def dual_criterion_risk_sensitive(mdp, risk_factor, minimum_error):
                 n_delta2 = min(n_delta2, pg[s.number-1] - linear_combination(s.T[a], pg))
 
         delta1 = n_delta1
-        ''' if the mdp only has absorber states there will be no poor actions and the delta2 cannot be changed'''
-        delta2 = n_delta2 if n_delta2 != float('Inf') else delta2
+        ''' if there will be no poor actions, delta2 assumes the best value, Inf'''
+        delta2 = n_delta2
 
 
     return pg,v_lambda,best_actions

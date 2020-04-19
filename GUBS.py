@@ -209,7 +209,7 @@ class MDP:
         # probability to reach the goal
         pg = [s.probReachGoal for s in self.S]
         v_lambda = [s.value for s in self.S]
-
+        print('as')
         for s in Z:
             pg[s.number-1] = 0
             v_lambda[s.number-1] = -1 if risk_factor > 0 else 1
@@ -325,6 +325,7 @@ def LAOGUBS(mdp, risk_factor, error_minimum, startState=None, processed=None):
                         visited[state.number - 1] = True
 
         # if there are no tips the LAOStar algorithm ends
+        print(expanded,processed)
         if not expanded or expanded in processed:
             return None
 
@@ -439,12 +440,10 @@ def LAOGUBS(mdp, risk_factor, error_minimum, startState=None, processed=None):
 # probFall = float(input('Probabilidade de ser levado pela correnteza: '))
 
 # Test Script
-mdp = MDP(8, 6)
-# problems.swim_without_deadend(mdp.Nx,mdp.Ny,mdp.A,0.8,0,mdp)
-#problems.swim(mdp.Nx, mdp.Ny, mdp.A, 0.8, 0, True, mdp)
-problems.swim_symmetric(mdp.Nx, mdp.Ny, mdp.A, 0.8, 0, True, mdp)
 mdp = MDP(4, 8)
 problems.swim_symmetric(mdp.Nx, mdp.Ny, mdp.A, 0.8, 0, True, mdp)
+# problems.swim_without_deadend(mdp.Nx,mdp.Ny,mdp.A,0.8,0,mdp)
+#problems.swim(mdp.Nx, mdp.Ny, mdp.A, 0.8, 0, True, mdp)
 print(mdp)
 
 mdp.set_costs(1)
@@ -457,15 +456,15 @@ value = 0
 
 mdp.set_value(value)
 
-mdp.dual_criterion_risk_sensitive(risk_factor,error_minimum)
+# mdp.dual_criterion_risk_sensitive(risk_factor,error_minimum)
 
-# mdp.dual_criterion_risk_sensitive(risk_factor,error_minimum,[mdp.S[3],mdp.S[7],mdp.S[11],mdp.S[15]])
+# mdp.dual_criterion_risk_sensitive(risk_factor,error_minimum,[mdp.S[i] for i in range(5)])
 # mdp.dual_criterion_risk_sensitive(risk_factor,error_minimum,[mdp.S[10],mdp.S[7],mdp.S[11],mdp.S[15]])
 # mdp.dual_criterion_risk_sensitive(risk_factor,error_minimum,[mdp.S[15],mdp.S[14],mdp.S[13],mdp.S[12]])
-gui.plot(mdp, [])
+# gui.plot(mdp, [])
 
 processed = set()
-# processed.update(LAOGUBS(mdp, 14, processed))
+processed.update(LAOGUBS(mdp, risk_factor,error_minimum,1,processed))
 # print('bsg: ', processed, '\n\n\n')
 # processed.update(LAOGUBS(mdp, 15, processed))
 # print('\nProcessed: ',processed,'\n\n')

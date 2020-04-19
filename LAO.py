@@ -1,3 +1,5 @@
+import math
+
 import MDP
 
 
@@ -12,6 +14,7 @@ def LAO(mdp, start_state=1):
         - starter values
         - goal values assigned on successors have to be the best values according to the dynamic programming algorithm used
         - the dynamic programming algorithm has to keep values and best actions through calls
+        - the return of LAO
     All of this changes are marked with a comment '# *' on the code
     '''
 
@@ -111,7 +114,7 @@ def LAO(mdp, start_state=1):
         '''
         (values, best_actions) = z_value_iteration(mdp, Z, values, best_actions, 0.999, 0.000001)  # *
 
-    return values, best_actions
+    return values, best_actions  # *
 
 
 def z_value_iteration(mdp, Z, values, best_actions, gamma=0.999, epsilon=0.00001):
@@ -159,8 +162,100 @@ def z_value_iteration(mdp, Z, values, best_actions, gamma=0.999, epsilon=0.00001
     return vk1, best_actions
 
 
+def z_dual_criterion_risk_sensitive(mdp, Z, pg_values, risk_values, best_actions, risk_factor=-0.01, minimum_error=0.0001):
+    """
+    update the values of the state's object and also returns a list with the values of each state
+    :param mdp: a MDP object
+    :param Z: a set of states that will be updated
+    :param pg_values: previous probability to goal values of each state
+    :param risk_values: previous risk values of each state
+    :param best_actions: previous best actions of each state
+    :param risk_factor: used for weight the risk value
+    :param minimum_error: precision measured by the number of zeros on epsilon
+    :return: list of pg_values and risk_values for each state as well as the best actions that gave the best values
+    """
+    if not Z:  # whether nothing was passed as Z, we will consider all states in the mdp
+        Z = [s for s in mdp.S]
+
+    # initializations
+    delta1 = float('Inf')
+    delta2 = 0
+    v_lambda = risk_values.copy()  # risk values
+    pg = pg_values.copy()  # probability to reach the goal
+
+    for s in Z:
+        pg[s.number - 1] = 0
+
+    for s in Z:  # goal states treatment
+        if s.goal:
+            v_lambda[s.number - 1] = -1 if risk_factor > 0 else 1  # -sgn(risk_factor)
+            pg[s.number - 1] = 1
+
+    def linear_combination(t, vector):
+        """
+        an auxiliar function in order to clear the code
+        :param t: a transaction list obtained by following an action on a state, usually mdp.S[i].T[a]
+        :param vector: a vector whose will be linear combined with the states and probabilities of t
+        :return: a summation representing the linear combination
+        """
+        summ = 0
+        for s2 in t:
+            summ += s2['prob'] * vector[s2['state'] - 1]
+        return summ
+
+    while delta1 >= minimum_error or delta2 <= 0:
+        v_previous = v_lambda.copy()
+        p_previous = pg.copy()
+
+        A = [[] for i in range(len(mdp.S))]  # max prob actions for each state
+
+        for s in Z:
+
+            if s.goal:
+                continue
+
+            # probability value section
+            max_prob_t = max(s.T, key=lambda t: linear_combination(t, p_previous))
+            pg[s.number - 1] = linear_combination(max_prob_t, p_previous)
+
+            # keeping all the actions that tie with the max prob action in the A list of this state
+            A[s.number - 1] = []
+            for t_index in range(len(s.T)):  # the indexes represent the taken actions
+                if linear_combination(s.T[t_index], p_previous) == pg[s.number - 1]:
+                    A[s.number - 1].append(t_index)
+
+            # risk value section
+            best_action = max(A[s.number - 1], key=lambda a: math.exp(risk_factor * s.cost) *
+                                                             linear_combination(s.T[a], v_previous))
+            v_lambda[s.number - 1] = math.exp(risk_factor * s.cost) * linear_combination(s.T[best_action], v_previous)
+            best_actions[s.number - 1] = best_action
+
+        # updating deltas
+        n_delta1 = -float('Inf')
+        n_delta2 = float('Inf')
+        for s in Z:
+
+            if s.goal:
+                continue
+
+            n_delta1 = max(n_delta1, abs(v_lambda[s.number - 1] - v_previous[s.number - 1]) + abs(
+                pg[s.number - 1] - p_previous[s.number - 1]))
+
+            all_actions = set([i for i in range(mdp.A)])
+            max_prob_actions = set(A[s.number - 1])
+            poor_actions = all_actions - max_prob_actions
+            for a in poor_actions:
+                n_delta2 = min(n_delta2, pg[s.number - 1] - linear_combination(s.T[a], pg))
+
+        delta1 = n_delta1
+        ''' if there will be no poor actions, delta2 assumes the best value, Inf'''
+        delta2 = n_delta2
+
+    return pg, v_lambda, best_actions
+
+
 def LAO_interactive(mdp, start_state=1):
-    '''
+    """
     The same as the LAO function above but divided into functions in order to visualize each step on GUI
 
     :param mdp: an MDP object
@@ -172,7 +267,7 @@ def LAO_interactive(mdp, start_state=1):
         - goal values assigned on successors have to be the best values according to the dynamic programming algorithm used
         - the dynamic programming algorithm has to keep values and best actions through calls
     All of this changes are marked with a comment '# *' on the code
-    '''
+    """
 
     # Heuristic
     def h(s):  # *
@@ -271,6 +366,7 @@ def LAO_interactive(mdp, start_state=1):
         (values, best_actions) = z_value_iteration(mdp, Z, values, best_actions, 0.999, 0.000001)  # *
         return values,best_actions
 
+    # Steps definition  # *
     global expanded, G, Z, best_actions, values, tip
     best_actions = [0] * len(mdp.S)
     values = [0] * len(mdp.S)  # *
@@ -280,7 +376,6 @@ def LAO_interactive(mdp, start_state=1):
     expanded = None
     G = set([start_state])  # Explicit graph
     Z = set()
-
     ''' 
         every step function receives the step button object and returns:
         a list of value's lists, a list of labels, a list of best_actions, a list of colors
@@ -301,7 +396,7 @@ def LAO_interactive(mdp, start_state=1):
             colors[expanded.number-1] = '#FF5151'
         return [values],['V'],best_actions,colors
     def step2(step_button):
-        global expanded, G, values, tip
+        global expanded, G, values, best_actions, tip
         G = successors(expanded,G,tip,values)
         colors = ['#f0f0f0'] * len(mdp.S)
         for s in G:
@@ -311,7 +406,7 @@ def LAO_interactive(mdp, start_state=1):
                 colors[s.number - 1] = '#0A767D'
         if expanded:
             colors[expanded.number - 1] = '#FF5151'
-        return None,None,None,colors
+        return [values],['V'],best_actions,colors
     def step3(step_button):
         global expanded, G, Z, best_actions, tip
         Z = setZ(expanded,G,tip,best_actions)
@@ -349,7 +444,10 @@ MDP.problems.swim_symmetric(mdp.Nx, mdp.Ny, mdp.A, 0.8, 0, True, mdp)
 print(mdp)
 mdp.set_costs(1)
 
-(cost_values, best_actions) = LAO(mdp,2)
+(pg_values, risk_values, best_actions) = z_dual_criterion_risk_sensitive(mdp,None,[0 for s in mdp.S],[0 for s in mdp.S],[0 for s in mdp.S])
+MDP.gui.plot(mdp,[pg_values,risk_values],['PG','V'],best_actions)
+
+(cost_values, best_actions) = LAO(mdp,1)
 MDP.gui.plot(mdp, [cost_values], ['V'], best_actions)
 
 LAO_interactive(mdp,1)

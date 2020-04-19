@@ -82,7 +82,7 @@ def plot(mdp,functions):
                 startState[0]=False
 
         elif func[0] == 1:
-            root.title('Add sucessors of the expanded to the explicit graph')
+            root.title('Add successors of the expanded to the explicit graph')
             G[0] = functions[func[0]](expanded[0],G[0])
 
             if G[0]:
