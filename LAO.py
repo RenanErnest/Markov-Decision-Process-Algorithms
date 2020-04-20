@@ -439,15 +439,15 @@ def LAO_interactive(mdp, start_state=1):
     MDP.gui.step_plot(mdp,[step1,step2,step3,step4],['Expansion','Adding successors','Putting ancestor in Z','Dynamic programming'])
 
 # Test Script
-mdp = MDP.MDP(4, 8, 4)
-MDP.problems.swim_symmetric(mdp.Nx, mdp.Ny, mdp.A, 0.8, 0, True, mdp)
-print(mdp)
-mdp.set_costs(1)
-
-(pg_values, risk_values, best_actions) = z_dual_criterion_risk_sensitive(mdp,None,[0 for s in mdp.S],[0 for s in mdp.S],[0 for s in mdp.S])
-MDP.gui.plot(mdp,[pg_values,risk_values],['PG','V'],best_actions)
-
-(cost_values, best_actions) = LAO(mdp,1)
-MDP.gui.plot(mdp, [cost_values], ['V'], best_actions)
-
-LAO_interactive(mdp,1)
+# mdp = MDP.MDP(4, 8, 4)
+# mdp.set_costs(1)
+# MDP.problems.swim_symmetric(mdp.Nx, mdp.Ny, mdp.A, 0.8, 0, True, mdp)
+# print(mdp)
+#
+# (pg_values, risk_values, best_actions) = z_dual_criterion_risk_sensitive(mdp,None,[0 for s in mdp.S],[0 for s in mdp.S],[0 for s in mdp.S])
+# MDP.gui.plot(mdp,[pg_values,risk_values],['PG','V'],best_actions)
+#
+# (cost_values, best_actions) = LAO(mdp,1)
+# MDP.gui.plot(mdp, [cost_values], ['V'], best_actions)
+#
+# LAO_interactive(mdp,1)
