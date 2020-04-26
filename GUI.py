@@ -60,7 +60,6 @@ def plot(mdp, values, labels, best_actions):
 
 f = 0  # global variable used on step_plot function
 
-
 def step_plot(mdp,stepFunctions,titles=None):
     '''
     :param mdp: a mdp object
@@ -68,9 +67,12 @@ def step_plot(mdp,stepFunctions,titles=None):
     :param titles: a list of titles for each step
     '''
 
+    global f
+    f = 0
+
     def step():
-        # getting values
         global f
+        # getting values
         (values, labels, best_actions, colors) = stepFunctions[f](stepButton)
 
 
