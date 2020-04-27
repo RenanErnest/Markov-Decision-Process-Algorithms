@@ -31,10 +31,10 @@ def LAO_Multistart(mdp, start_state=1, processed_set=None, pg_values=None, risk_
         return 1
 
     start_state = mdp.S[start_state - 1]
+    last_expanded = None
     tip = [False for s in mdp.S]
     tip[start_state.number - 1] = True
     G = set([start_state])  # Explicit graph
-    last_expanded = None
 
     while True:
 
@@ -88,26 +88,29 @@ def LAO_Multistart(mdp, start_state=1, processed_set=None, pg_values=None, risk_
             At the end of this part we will have all the states in the explicit graph that can reach the expanded state
             In other words, all of its ancestors
         '''
-        def recursion(s, visited, Z, target):
+
+        def recursion(s, visited, ancestors, target):
             visited[s.number - 1] = True
 
             found = False
 
             if s == target:
-                Z.add(s)  # Z is a set so there is no repetitions
+                ancestors.add(s)  # ancestors is a set so there is no repetitions
                 return True
+
+            if s not in G or tip[s.number - 1]:
+                return False
 
             for t in s.T[best_actions[s.number - 1]]:
                 s2 = mdp.S[t['state'] - 1]
-                # if s2 is in G and it is not a tip and it was not visited
-                if s2 in G and not tip[s2.number - 1] and not visited[s2.number - 1]:
+                if not visited[s2.number - 1]:
                     if not found:
-                        found = recursion(s2, visited, Z, target)
+                        found = recursion(s2, visited, ancestors, target)
                     else:
-                        recursion(s2, visited, Z, target)
+                        recursion(s2, visited, ancestors, target)
 
             if found:
-                Z.add(s)
+                ancestors.add(s)
                 return True
             return False
 
@@ -116,7 +119,6 @@ def LAO_Multistart(mdp, start_state=1, processed_set=None, pg_values=None, risk_
             if not tip[start.number - 1]:
                 visited = [False for s in mdp.S]
                 recursion(start, visited, Z, expanded)
-
         '''
             Perform dynamic programming on the states in set Z in order to update values and best actions
         '''
@@ -209,34 +211,36 @@ def LAO_Multistart_interactive(mdp, start_state=1, processed_set=None, pg_values
 
     def setZ(expanded, G, tip, best_actions):
         '''
-                    Create a set Z that contains the expanded state and all of its ancestors in the explicit graph along
-                    marked action arcs.
-                    Here we do from every state in the explicit graph a recursion keeping the path
-                    Then if the path from a start state x reaches the expanded state we add this path to the set Z
-                    At the end of this part we will have all the states in the explicit graph that can reach the expanded state
-                    In other words, all of its ancestors
-                '''
+            Create a set Z that contains the expanded state and all of its ancestors in the explicit graph along
+            marked action arcs.
+            Here we do from every state in the explicit graph a recursion keeping the path
+            Then if the path from a start state x reaches the expanded state we add this path to the set Z
+            At the end of this part we will have all the states in the explicit graph that can reach the expanded state
+            In other words, all of its ancestors
+        '''
 
-        def recursion(s, visited, Z, target):
+        def recursion(s, visited, ancestors, target):
             visited[s.number - 1] = True
 
             found = False
 
             if s == target:
-                Z.add(s)  # Z is a set so there is no repetitions
+                ancestors.add(s)  # ancestors is a set so there is no repetitions
                 return True
+
+            if s not in G or tip[s.number - 1]:
+                return False
 
             for t in s.T[best_actions[s.number - 1]]:
                 s2 = mdp.S[t['state'] - 1]
-                # if s2 is in G and it is not a tip and it was not visited
-                if s2 in G and not tip[s2.number - 1] and not visited[s2.number - 1]:
+                if not visited[s2.number - 1]:
                     if not found:
-                        found = recursion(s2, visited, Z, target)
+                        found = recursion(s2, visited, ancestors, target)
                     else:
-                        recursion(s2, visited, Z, target)
+                        recursion(s2, visited, ancestors, target)
 
             if found:
-                Z.add(s)
+                ancestors.add(s)
                 return True
             return False
 
@@ -256,6 +260,45 @@ def LAO_Multistart_interactive(mdp, start_state=1, processed_set=None, pg_values
                                                                                      best_actions, -0.01, 0.0001)  # *
         return pg_values, risk_values, best_actions
 
+
+    def bsg(start_state, last_expanded, G, tip, best_actions):
+        '''
+            Extracting the best solution graph in order to reuse the calculations in the next calls to this function.
+            For that, we call the same recursion function used to build Z but only for the start state
+        '''
+        def recursion(s, visited, ancestors, target):
+            visited[s.number - 1] = True
+
+            found = False
+
+            if s == target:
+                ancestors.add(s)  # ancestors is a set so there is no repetitions
+                return True
+
+            if s not in G or tip[s.number - 1]:
+                return False
+
+            for t in s.T[best_actions[s.number - 1]]:
+                s2 = mdp.S[t['state'] - 1]
+                if not visited[s2.number - 1]:
+                    if not found:
+                        found = recursion(s2, visited, ancestors, target)
+                    else:
+                        recursion(s2, visited, ancestors, target)
+
+            if found:
+                ancestors.add(s)
+                return True
+            return False
+
+        bsg = set()
+        recursion(start_state, [False for s in mdp.S], bsg, last_expanded)
+
+        '''
+            Adding the best solution graph to the processed set and returning it, the values, and best actions
+        '''
+        processed_set.update(bsg)
+        return processed_set
 
     # Steps definition  # *
     global expanded, last_expanded, G, Z, tip, n_pg_values, n_risk_values, n_best_actions
@@ -280,6 +323,7 @@ def LAO_Multistart_interactive(mdp, start_state=1, processed_set=None, pg_values
         expanded = expand(start_state, n_best_actions, tip,processed_set)
         if not expanded:
             step_button['state'] = 'disabled'
+            return stepExtra()
         colors = ['#f0f0f0'] * len(mdp.S)
         for s in G:
             if tip[s.number - 1]:
@@ -334,46 +378,21 @@ def LAO_Multistart_interactive(mdp, start_state=1, processed_set=None, pg_values
             colors[s.number - 1] = '#FFC300'
         return [n_pg_values,n_risk_values], ['PG','V'], n_best_actions, colors
 
+    def stepExtra():
+        global last_expanded, G, tip, n_pg_values, n_risk_values, n_best_actions
+        processed = bsg(start_state, last_expanded, G, tip, n_best_actions)
+        colors = ['#f0f0f0'] * len(mdp.S)
+        for s in G:
+            if tip[s.number - 1]:
+                colors[s.number - 1] = '#A0F9FF'
+            else:
+                colors[s.number - 1] = '#0A767D'
+        for s in processed:
+            colors[s.number - 1] = '#2FAC06'
+        return [n_pg_values, n_risk_values], ['PG', 'V'], n_best_actions, colors
+
     MDP.gui.step_plot(mdp, [step1, step2, step3, step4],
                       ['Expansion', 'Adding successors', 'Putting ancestor in Z', 'Dynamic programming'])
-
-
-    '''
-        Extracting the best solution graph in order to reuse the calculations in the next calls to this function.
-        For that, we call the same recursion function used to build Z but only for the start state
-    '''
-
-    def recursion(s, visited, Z, target):
-        global G, tip, n_best_actions
-        visited[s.number - 1] = True
-
-        found = False
-
-        if s == target:
-            Z.add(s)  # Z is a set so there is no repetitions
-            return True
-
-        for t in s.T[n_best_actions[s.number - 1]]:
-            s2 = mdp.S[t['state'] - 1]
-            # if s2 is in G and it is not a tip and it was not visited
-            if s2 in G and not tip[s2.number - 1] and not visited[s2.number - 1]:
-                if not found:
-                    found = recursion(s2, visited, Z, target)
-                else:
-                    recursion(s2, visited, Z, target)
-
-        if found:
-            Z.add(s)
-            return True
-        return False
-
-    bsg = set()
-    recursion(start_state, [False for s in mdp.S], bsg, last_expanded)
-
-    '''
-        Adding the best solution graph to the processed set and returning it, the values, and best actions
-    '''
-    processed_set.update(bsg)
 
     return processed_set, n_pg_values, n_risk_values, n_best_actions  # *
 
@@ -385,7 +404,7 @@ MDP.problems.swim_symmetric(mdp.Nx, mdp.Ny, mdp.A, 0.8, 0, True, mdp)
 print(mdp)
 
 # First call
-# (processed,pg_values,risk_values,best_actions) = LAO_Multistart(mdp,26)
+# (processed,pg_values,risk_values,best_actions) = LAO_Multistart(mdp,27)
 # MDP.gui.plot(mdp,[pg_values,risk_values],['PG','V'],best_actions)
 # print(processed)
 #
@@ -397,4 +416,6 @@ print(mdp)
 (processed,pg_values,risk_values,best_actions) = LAO_Multistart_interactive(mdp,28)
 
 # Next calls
+(processed,pg_values,risk_values,best_actions) = LAO_Multistart_interactive(mdp,2,processed,pg_values,risk_values,best_actions)
+
 (processed,pg_values,risk_values,best_actions) = LAO_Multistart_interactive(mdp,1,processed,pg_values,risk_values,best_actions)
