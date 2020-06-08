@@ -413,9 +413,9 @@ print(mdp)
 # MDP.gui.plot(mdp,[pg_values,risk_values],['PG','V'],best_actions)
 
 # First call
-(processed,pg_values,risk_values,best_actions) = LAO_Multistart_interactive(mdp,28)
+(processed,pg_values,risk_values,best_actions) = LAO_Multistart_interactive(mdp,27)
 
 # Next calls
-(processed,pg_values,risk_values,best_actions) = LAO_Multistart_interactive(mdp,2,processed,pg_values,risk_values,best_actions)
+(processed,pg_values,risk_values,best_actions) = LAO_Multistart_interactive(mdp,29,processed,pg_values,risk_values,best_actions)
 
-(processed,pg_values,risk_values,best_actions) = LAO_Multistart_interactive(mdp,1,processed,pg_values,risk_values,best_actions)
+#(processed,pg_values,risk_values,best_actions) = LAO_Multistart_interactive(mdp,1,processed,pg_values,risk_values,best_actions)
