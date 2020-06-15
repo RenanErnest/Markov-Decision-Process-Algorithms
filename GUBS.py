@@ -2,6 +2,16 @@ import MDP
 import LAO
 import LAO_Multistart
 
+
+class Extended_State:
+    def __init__(self, number: int, cost: int, goal: bool, transition_matrix, accumulated_cost):
+        self.number = number  # label of this state
+        self.cost = cost  # static cost taken from following any action
+        self.goal = goal  # goal flag
+        self.accumulated_cost = accumulated_cost
+        self.T = transition_matrix
+
+
 def LAO_GUBS(mdp, start_state=1):  # *
     """
     In progress...
@@ -17,14 +27,14 @@ def LAO_GUBS(mdp, start_state=1):  # *
     def h(s):  # *
         return 1
 
-    pg_values = [0 for s in mdp.S]  # *
-    risk_values = [1 for s in mdp.S]  # *
-    best_actions = [0 for s in mdp.S]
+    extended_states = {(s, 0): Extended_State(s.number, s.cost, s.goal, s.T, 0) for s in mdp.S}
+    pg_values = {s: 0 for e_s in extended_states.values() for s in e_s}
+    risk_values = {s: 1 for e_s in extended_states.values() for s in e_s}
+    best_actions = {s: 0 for e_s in extended_states.values() for s in e_s}
+    tip = {s: False for e_s in extended_states.values() for s in e_s}
 
-    start_state = mdp.S[start_state - 1]
-    last_expanded = None
-    tip = [False for s in mdp.S]
-    tip[start_state.number - 1] = True
+    start_state = extended_states[(mdp.S[start_state - 1], 0)]
+    tip[start_state] = True
     G = set([start_state])  # Explicit graph
 
     while True:
@@ -37,39 +47,64 @@ def LAO_GUBS(mdp, start_state=1):  # *
         expanded = None
 
         bfs = [start_state]
-        visited = [False for s in mdp.S]
+        visited = {s: False for e_s in extended_states.values() for s in e_s}
         while bfs:
             s = bfs.pop(0)
-            if tip[s.number - 1]:
+            if tip[s]:
                 expanded = s
-                last_expanded = expanded
                 break
             else:
-                for t in s.T[best_actions[s.number - 1]]:
+                for t in s.T[best_actions[s]]:
                     s2 = mdp.S[t['state'] - 1]
-                    if not visited[s2.number - 1]:
-                        bfs.append(s2)
-                        visited[s2.number - 1] = True
+
+                    ac = s.accumulated_cost + s.cost  # accumulated cost after the action
+                    # if (s2, ac) not in extended_states:  # if this is true, we need to create the extended state
+                    #     s2e = Extended_State(s2.number, s2.cost, s2.goal, s2.T, ac)
+                    #     extended_states[(s2, ac)] = s2e
+                    #     pg_values[s2e] = 0
+                    #     risk_values[s2e] = 1
+                    #     best_actions[s2e] = 0
+                    #     tip[s2e] = False
+                    #     visited[s2e] = False
+
+                    s2e = extended_states[(s2, ac)]
+
+                    if not visited[s2e]:
+                        bfs.append(s2e)
+                        visited[s2e] = True
 
         # If there are no tips to expand the LAO algorithm is over
         if not expanded:
             break
 
         # The expanded node chosen is no more a tip
-        tip[expanded.number - 1] = False
+        tip[expanded] = False
 
         '''add any new successor states to G following any action from the expanded state.'''
         for a in range(mdp.A):
             for t in expanded.T[a]:
                 s2 = mdp.S[t['state'] - 1]
-                if s2 not in G:
-                    G.add(s2)
-                    tip[s2.number - 1] = True
-                    if s2.goal:  # *
-                        # this value has to be the best value according the dynamic programming algorithm used
-                        pg_values[s2.number - 1] = 1
-                    else:  # reusing the previous value of the states in the processed set
-                        pg_values[s2.number - 1] = h(s2)
+
+                ac = s.accumulated_cost + s.cost  # accumulated cost after the action
+                if (s2, ac) not in extended_states:  # if this is true, we need to create the extended state
+                    s2e = Extended_State(s2.number, s2.cost, s2.goal, s2.T, ac)
+                    extended_states[(s2, ac)] = s2e
+                    pg_values[s2e] = 0
+                    risk_values[s2e] = 1
+                    best_actions[s2e] = 0
+                    tip[s2e] = False
+                    visited[s2e] = False
+
+                s2e = extended_states[(s2, ac)]
+
+            if s2e not in G:
+                G.add(s2e)
+                tip[s2e] = True
+                if s2e.goal:  # *
+                    # this value has to be the best value according the dynamic programming algorithm used
+                    pg_values[s2e] = 1
+                else:  # reusing the previous value of the states in the processed set
+                    pg_values[s2e] = h(s2e)
 
         '''
             Create a set Z that contains the expanded state and all of its ancestors in the explicit graph along
@@ -81,7 +116,7 @@ def LAO_GUBS(mdp, start_state=1):  # *
         '''
 
         def recursion(s, visited, ancestors, target):
-            visited[s.number - 1] = True
+            visited[s] = True
 
             found = False
 
@@ -89,16 +124,18 @@ def LAO_GUBS(mdp, start_state=1):  # *
                 ancestors.add(s)  # ancestors is a set so there is no repetitions
                 return True
 
-            if s not in G or tip[s.number - 1]:
+            if s not in G or tip[s]:
                 return False
 
-            for t in s.T[best_actions[s.number - 1]]:
+            for t in s.T[best_actions[s]]:
                 s2 = mdp.S[t['state'] - 1]
-                if not visited[s2.number - 1]:
+                ac = s.accumulated_cost + s.cost
+                s2e = extended_states[(s2, ac)]
+                if not visited[s2e]:
                     if not found:
-                        found = recursion(s2, visited, ancestors, target)
+                        found = recursion(s2e, visited, ancestors, target)
                     else:
-                        recursion(s2, visited, ancestors, target)
+                        recursion(s2e, visited, ancestors, target)
 
             if found:
                 ancestors.add(s)
@@ -107,20 +144,20 @@ def LAO_GUBS(mdp, start_state=1):  # *
 
         Z = set()
         for start in G:
-            if not tip[start.number - 1]:
-                visited = [False for s in mdp.S]
+            if not tip[start]:
+                visited = {se: False for se in extended_states.values()}
                 recursion(start, visited, Z, expanded)
         '''
             Perform dynamic programming on the states in set Z in order to update values and best actions
         '''
-        (pg_values, risk_values, best_actions) = LAO.z_dual_criterion_risk_sensitive(mdp,Z,pg_values,risk_values,best_actions,-0.01,0.0001)  # *
+        (pg_values, risk_values, best_actions) = LAO.z_dual_criterion_risk_sensitive(mdp, Z, pg_values, risk_values,
+                                                                                     best_actions, -0.01, 0.0001)  # *
 
     return pg_values, risk_values, best_actions
+
 
 # Test Script
 mdp = MDP.MDP(4, 8, 4)
 mdp.set_costs(1)
 MDP.problems.swim_symmetric(mdp.Nx, mdp.Ny, mdp.A, 0.8, 0, True, mdp)
 print(mdp)
-
-
