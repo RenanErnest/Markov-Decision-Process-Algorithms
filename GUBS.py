@@ -1,6 +1,7 @@
+import math
 import MDP
 import LAO
-import LAO_Multistart
+from LAO_Multistart import LAO_Multistart
 
 
 class Extended_State:
@@ -12,7 +13,7 @@ class Extended_State:
         self.T = transition_matrix
 
 
-def LAO_GUBS(mdp, start_state=1):  # *
+def LAO_GUBS(mdp, start_state=1, kg = 1, risk_factor = -0.01):  # *
     """
     In progress...
     We have to think about how to implement the expanded states on demand and include they in the mdp without lose so
@@ -20,12 +21,22 @@ def LAO_GUBS(mdp, start_state=1):  # *
 
     :param mdp: an MDP object
     :param start_state: an integer representing the start state
+    :param kg: a goal terminal reward constant
     :return: the states in best solution graph, the final values and best actions determined by the dynamic programming
     """
 
     # Heuristic
     def h(s):  # *
         return 1
+
+    def check_optimal_stationary_policy():
+        pass
+
+    # LAO_Multistart variables
+    ms_processed = None
+    ms_pg_values = None
+    ms_risk_values = None
+    ms_best_actions = None
 
     extended_states = {(s, 0): Extended_State(s.number, s.cost, s.goal, s.T, 0) for s in mdp.S}
     pg_values = {s: 0 for e_s in extended_states.values() for s in e_s}
@@ -80,10 +91,22 @@ def LAO_GUBS(mdp, start_state=1):  # *
         # The expanded node chosen is no more a tip
         tip[expanded] = False
 
-        '''add any new successor states to G following any action from the expanded state.'''
+        # Check Optimal stationary policy
+        (ms_processed, ms_pg_values, ms_risk_values, ms_best_actions) = LAO_Multistart(mdp, expanded.number,
+                                                                                       ms_processed, ms_pg_values,
+                                                                                       ms_risk_values,
+                                                                                       ms_best_actions)
+        successors = set()
+        optimal_stationary = False
+        Wmax = 0
         for a in range(mdp.A):
+            summ = 0
+            summ2 = 0
             for t in expanded.T[a]:
                 s2 = mdp.S[t['state'] - 1]
+
+                summ += t['prob']*math.exp(risk_factor*expanded.cost)*ms_risk_values[s2.number-1]
+                summ2 += t['prob']*ms_pg_values[s2.number-1] - ms_pg_values[expanded.number-1]
 
                 ac = s.accumulated_cost + s.cost  # accumulated cost after the action
                 if (s2, ac) not in extended_states:  # if this is true, we need to create the extended state
@@ -96,16 +119,30 @@ def LAO_GUBS(mdp, start_state=1):  # *
                     visited[s2e] = False
 
                 s2e = extended_states[(s2, ac)]
+                successors.add(s2e)
+            Wline = 0
+            if summ > ms_risk_values[expanded.number-1]:  # belongs to X set
+                Wline = -1/risk_factor * math.log((ms_risk_values[expanded.number-1] - summ)/(kg*summ2))
+            if Wline > Wmax:
+                Wmax = Wline
 
-            if s2e not in G:
-                G.add(s2e)
-                tip[s2e] = True
-                if s2e.goal:  # *
-                    # this value has to be the best value according the dynamic programming algorithm used
-                    pg_values[s2e] = 1
-                else:  # reusing the previous value of the states in the processed set
-                    pg_values[s2e] = h(s2e)
+        if expanded.ac >= Wmax:
+            optimal_stationary = True
 
+        '''add any new successor states to G following any action from the expanded state.'''
+        if not optimal_stationary:
+            for s2e in successors:
+                if s2e not in G:
+                    G.add(s2e)
+                    tip[s2e] = True
+                    if s2e.goal:  # *
+                        # this value has to be the best value according the dynamic programming algorithm used
+                        pg_values[s2e] = 1
+                    else:  # reusing the previous value of the states in the processed set
+                        pg_values[s2e] = h(s2e)
+
+        # think about the code from here to below for extended states and the updating of values
+        
         '''
             Create a set Z that contains the expanded state and all of its ancestors in the explicit graph along
             marked action arcs.
@@ -147,6 +184,8 @@ def LAO_GUBS(mdp, start_state=1):  # *
             if not tip[start]:
                 visited = {se: False for se in extended_states.values()}
                 recursion(start, visited, Z, expanded)
+
+        # entended until here. We have to think about the dinamyc programming
         '''
             Perform dynamic programming on the states in set Z in order to update values and best actions
         '''
