@@ -11,7 +11,7 @@ def LAO(mdp, start_state=1):
 
     In order to change the dynamic programming function you have to pay a special attention to:
         - an admissible heuristic values
-        - starter values
+        - initial values
         - goal values assigned on successors have to be the best values according to the dynamic programming algorithm used
         - the dynamic programming algorithm has to keep values and best actions through calls
         - the return of LAO

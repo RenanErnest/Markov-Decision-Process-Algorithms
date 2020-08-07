@@ -147,7 +147,7 @@ def LAO_Multistart_interactive(mdp, start_state=1, processed_set=None, pg_values
 
     In order to change the dynamic programming function you have to pay a special attention to:
         - an admissible heuristic values
-        - starter values
+        - initial values
         - goal values assigned on successors have to be the best values according to the dynamic programming algorithm
         - the dynamic programming algorithm has to keep values and best actions through calls
     All of this changes are marked with a comment '# *' on the code
@@ -413,9 +413,9 @@ print(mdp)
 # MDP.gui.plot(mdp,[pg_values,risk_values],['PG','V'],best_actions)
 
 # First call
-(processed,pg_values,risk_values,best_actions) = LAO_Multistart_interactive(mdp,27)
+#(processed,pg_values,risk_values,best_actions) = LAO_Multistart_interactive(mdp,27)
 
 # Next calls
-(processed,pg_values,risk_values,best_actions) = LAO_Multistart_interactive(mdp,29,processed,pg_values,risk_values,best_actions)
+#(processed,pg_values,risk_values,best_actions) = LAO_Multistart_interactive(mdp,29,processed,pg_values,risk_values,best_actions)
 
 #(processed,pg_values,risk_values,best_actions) = LAO_Multistart_interactive(mdp,1,processed,pg_values,risk_values,best_actions)
