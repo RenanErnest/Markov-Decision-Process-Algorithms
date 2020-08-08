@@ -13,7 +13,7 @@ class Extended_State:
         self.accumulated_cost = accumulated_cost
 
 
-def LAO_GUBS(mdp, start_state=1, kg=1, risk_factor=-0.01):  # *
+def LAO_GUBS(mdp, start_state=1, kg=1, risk_factor= -0.01):  # *
     """
     In progress...
     We have to think about how to implement the expanded states on demand and include they in the mdp without lose so
@@ -122,7 +122,7 @@ def LAO_GUBS(mdp, start_state=1, kg=1, risk_factor=-0.01):  # *
                     s2 = mdp.S[t['state'] - 1]
                     summ += t['prob'] * math.exp(risk_factor * expanded.cost) * ms_risk_values[s2.number - 1]
                     summ2 += t['prob'] * ms_pg_values[s2.number - 1] - ms_pg_values[expanded.number - 1]
-                W = -1 / risk_factor * math.log((ms_risk_values[expanded.number - 1] - summ) / Kg(summ2))
+                W = -1 / risk_factor * math.log((ms_risk_values[expanded.number - 1] - summ) / kg(summ2))
                 if W > Wmax:
                     Wmax = W
             Cmax[expanded] = Wmax
@@ -197,10 +197,56 @@ def LAO_GUBS(mdp, start_state=1, kg=1, risk_factor=-0.01):  # *
         '''
             Perform dynamic programming on the states in set Z in order to update values and best actions
         '''
-        # do the gubs criteria to update values
-        # (pg_values, risk_values, best_actions) = LAO.z_dual_criterion_risk_sensitive(mdp, Z, pg_values, risk_values,
-        #                                                                              best_actions, -0.01, 0.0001)  # *
+        (pg_values, risk_values, best_actions) = GUBS(start_state, extended_states, Z, Cmax, pg_values, risk_values, best_actions,
+                                                      ms_pg_values, ms_risk_values, ms_best_actions, risk_factor, kg)  # *
 
+    return pg_values, risk_values, best_actions
+
+def GUBS(start_state, extended_states, Z, Cmax, pg_values, risk_values, best_actions, ms_pg_values, ms_risk_values, ms_best_actions,
+             risk_factor=-0.01, goal_reward=1):
+
+    def recursion(s, visited, pg_values, risk_values, best_actions):
+        visited[s] = True
+
+        if s not in Z:
+            return {'p': pg_values[s], 'v': risk_values[s]}
+
+        if Cmax[s] <= s.accumulated_cost:
+            pg_values[s] = ms_pg_values[s.number -1]
+            risk_values[s] = ms_risk_values[s.number -1]
+            best_actions[s] = ms_best_actions[s.number -1]
+            return {'p': pg_values[s], 'v': risk_values[s]}
+
+        maxi = {'total': -float('Inf'), 'a': 0, 'p': None, 'v': None}
+        for a in range(mdp.A):
+            summV = 0
+            summP = 0
+            ac = s.accumulated_cost + s.cost
+            for t in s.T[a]:
+                s2 = mdp.S[t['state'] - 1]
+                s2e = extended_states[(s2, ac)]
+                if visited[s2e]:
+                    summV += t['prob'] * risk_values[s2e]
+                    summP += t['prob'] * pg_values[s2e]
+                else:
+                    s2eMaxi = recursion(s2e, visited, pg_values, risk_values, best_actions)
+                    summV += t['prob'] * s2eMaxi['v']
+                    summP += t['prob'] * s2eMaxi['p']
+
+            value = math.exp(risk_factor * s.cost) * summV
+            probability = summP
+            total = math.exp(risk_factor * s.accumulated_cost) * value + goal_reward * probability
+            if total > maxi['total']:
+                maxi = {'total': total, 'a': a, 'p': probability, 'v': value}
+
+        pg_values[s] = maxi['p']
+        risk_values[s] = maxi['v']
+        best_actions[s] = maxi['a']
+
+        return maxi
+
+    visited = {s: False for s in extended_states.values()}
+    recursion(start_state, visited, pg_values, risk_values, best_actions)
     return pg_values, risk_values, best_actions
 
 
